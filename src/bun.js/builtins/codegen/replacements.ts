@@ -58,6 +58,7 @@ export const enums = {
     "import-statement",
     "require-call",
     "dynamic-import",
+    "import-meta-resolve",
     "require-resolve",
     "import-rule",
     "url-token",

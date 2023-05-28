@@ -20,6 +20,9 @@ pub const ImportKind = enum(u8) {
     // An "import()" expression with a string argument
     dynamic,
 
+    /// A call to "import.meta.resolve()"
+    import_meta_resolve,
+
     /// A call to "require.resolve()"
     require_resolve,
 
@@ -44,6 +47,7 @@ pub const ImportKind = enum(u8) {
         labels.set(ImportKind.stmt, "import-statement");
         labels.set(ImportKind.require, "require-call");
         labels.set(ImportKind.dynamic, "dynamic-import");
+        labels.set(ImportKind.import_meta_resolve, "import-meta-resolve");
         labels.set(ImportKind.require_resolve, "require-resolve");
         labels.set(ImportKind.at, "import-rule");
         labels.set(ImportKind.url, "url-token");
@@ -76,6 +80,7 @@ pub const ImportKind = enum(u8) {
             ImportKind.stmt => Api.ImportKind.stmt,
             ImportKind.require => Api.ImportKind.require,
             ImportKind.dynamic => Api.ImportKind.dynamic,
+            ImportKind.import_meta_resolve => Api.ImportKind.import_meta_resolve,
             ImportKind.require_resolve => Api.ImportKind.require_resolve,
             ImportKind.at => Api.ImportKind.at,
             ImportKind.url => Api.ImportKind.url,

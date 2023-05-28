@@ -8,10 +8,11 @@ var __ImportKind;
     stmt = 1,
     require = 2,
     dynamic = 3,
-    require_resolve = 4,
-    at = 5,
-    at_conditional = 6,
-    url = 7,
+    import_meta_resolve = 4,
+    require_resolve = 5,
+    at = 6,
+    at_conditional = 7,
+    url = 8,
   }
 
   type ErrorPosition = {

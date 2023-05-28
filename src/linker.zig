@@ -724,6 +724,7 @@ pub const Linker = struct {
                                 }
 
                                 if (comptime is_bun) {
+                                    // TODO(import.meta.resolve): Handle this?
                                     // make these happen at runtime
                                     if (import_record.kind == .require or import_record.kind == .require_resolve) {
                                         continue;

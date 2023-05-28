@@ -2893,6 +2893,7 @@ declare class ResolveMessage {
     | "require"
     | "import"
     | "dynamic"
+    | "import_meta_resolve"
     | "require_resolve"
     | "at"
     | "at_conditional"

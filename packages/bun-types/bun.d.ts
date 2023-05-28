@@ -952,6 +952,7 @@ declare module "bun" {
     | "import-statement"
     | "require-call"
     | "require-resolve"
+    | "import-meta-resolve"
     | "dynamic-import"
     | "import-rule"
     | "url-token"

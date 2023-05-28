@@ -133,6 +133,7 @@ Each import in the `imports` array has a `path` and `kind`. Bun categories impor
 - `import-statement`: `import React from 'react'`
 - `require-call`: `const val = require('./cjs.js')`
 - `require-resolve`: `require.resolve('./cjs.js')`
+- `import-meta-resolve`: `import.meta.resolve('./resource')`
 - `dynamic-import`: `import('./loader')`
 - `import-rule`: `@import 'foo.css'`
 - `url-token`: `url('./foo.png')`

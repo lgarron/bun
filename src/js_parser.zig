@@ -5004,6 +5004,7 @@ fn NewParser_(
         //
         after_arrow_body_loc: logger.Loc = logger.Loc.Empty,
         import_transposer: ImportTransposer,
+        import_meta_resolve_transposer: ImportMetaResolveTransposer,
         require_transposer: RequireTransposer,
         require_resolve_transposer: RequireResolveTransposer,
 
@@ -16370,6 +16371,7 @@ fn NewParser_(
                         .has_chain_parent = (e_.optional_chain orelse js_ast.OptionalChain.start) == .ccontinue,
                     });
                     var could_be_require_resolve: bool = false;
+                    var could_be_import_meta_resolve: bool = false;
 
                     // Copy the call side effect flag over if this is a known target
                     switch (e_.target.data) {
@@ -16383,6 +16385,13 @@ fn NewParser_(
                                 dot.optional_chain == null and
                                 @as(Expr.Tag, dot.target.data) == .e_identifier and
                                 dot.target.data.e_identifier.ref.eql(p.require_ref) and
+                                strings.eqlComptime(dot.name, "resolve"));
+                            // Prepare to recognize "import.meta.resolve()" calls
+                            // TODO(import.meta.resolve): recognie `import.meta.resolve` rather than `import.resolve`
+                            could_be_import_meta_resolve = (e_.args.len >= 1 and
+                                dot.optional_chain == null and
+                                @as(Expr.Tag, dot.target.data) == .e_identifier and
+                                dot.target.data.e_identifier.ref.eql(p.import_ref) and
                                 strings.eqlComptime(dot.name, "resolve"));
                         },
                         else => {},
@@ -16461,6 +16470,70 @@ fn NewParser_(
                         }
                     }
 
+                    // TODO: deduplicate with the `require` logic.
+                    if (e_.optional_chain == null and @as(Expr.Tag, e_.target.data) == .e_identifier and
+                        e_.target.data.e_identifier.ref.eql(p.import_ref))
+                    {
+                        e_.can_be_unwrapped_if_unused = false;
+
+                        // Heuristic: omit warnings inside try/catch blocks because presumably
+                        // the try/catch statement is there to handle the potential run-time
+                        // error from the unbundled require() call failing.
+                        if (e_.args.len == 1) {
+                            const first = e_.args.first_();
+                            switch (first.data) {
+                                .e_string => {
+                                    // TODO(import.meta.resolve): update the comment on the next line
+                                    // require(FOO) => require(FOO)
+                                    return p.transposeImport(first, null);
+                                },
+                                .e_if => {
+                                    // TODO(import.meta.resolve): update the comment on the next line
+                                    // require(FOO  ? '123' : '456') => FOO ? require('123') : require('456')
+                                    // This makes static analysis later easier
+                                    return p.import_meta_url_transposer.maybeTransposeIf(first, null);
+                                },
+                                else => {},
+                            }
+                        }
+
+                        // TODO: Update `if (p.options.features.dynamic_import)`
+                        if (true) {
+                            // TODO(import.meta.resolve): update the comment on the next line
+                            // Ignore calls to require() if the control flow is provably
+                            // dead here. We don't want to spend time scanning the required files
+                            // if they will never be used.
+                            if (p.is_control_flow_dead) {
+                                return p.newExpr(E.Null{}, expr.loc);
+                            }
+
+                            if (p.options.warn_about_unbundled_modules) {
+                                const r = js_lexer.rangeOfIdentifier(p.source, e_.target.loc);
+                            // TODO(import.meta.resolve): update this text
+                                p.log.addRangeDebug(p.source, r, "This call to \"require\" will not be bundled because it has dynamic arguments") catch unreachable;
+                            }
+
+                            p.ignoreUsage(p.require_ref);
+
+                            if (!could_be_import_meta_resolve) {
+                                return p.newExpr(
+                                    E.Call{
+                                        .target = p.valueForImportMetaResolve(e_.target.loc),
+                                        .args = e_.args,
+                                    },
+                                    expr.loc,
+                                );
+                            }
+                        }
+
+                        // TODO(import.meta.resolve): is this (And the block it's compied from (duplicate logic that will result in a duplicate debug log?)
+                        if (p.options.warn_about_unbundled_modules) {
+                            const r = js_lexer.rangeOfIdentifier(p.source, e_.target.loc);
+                            // TODO(import.meta.resolve): update this text
+                            p.log.addRangeDebug(p.source, r, "This call to \"require\" will not be bundled because it has multiple arguments") catch unreachable;
+                        }
+                    }
+
                     if (could_be_require_resolve) {
                         // Ignore calls to require.resolve() if the control flow is provably
                         // dead here. We don't want to spend time scanning the required files
@@ -16501,6 +16574,53 @@ fn NewParser_(
                                     // require(FOO  ? '123' : '456') => FOO ? require('123') : require('456')
                                     // This makes static analysis later easier
                                     return p.require_resolve_transposer.maybeTransposeIf(first, expr);
+                                },
+                                else => {},
+                            }
+                        }
+                    }
+
+                    if (could_be_import_meta_resolve) {
+                        // Ignore calls to import.meta.resolve() if the control flow is provably
+                        // dead here. We don't want to spend time scanning the required files
+                        // if they will never be used.
+                        if (p.is_control_flow_dead) {
+                            return p.newExpr(E.Null{}, expr.loc);
+                        }
+
+                        if (p.options.features.dynamic_require and !p.options.bundle) {
+                            p.ignoreUsage(p.import_ref);
+                            // TODO(import.meta.resolve): figure out what to do with everything in this block below
+                            // require.resolve(FOO) => import.meta.resolveSync(FOO)
+                            // require.resolve(FOO) => import.meta.resolveSync(FOO, pathsObject)
+                            return p.newExpr(
+                                E.Call{
+                                    .target = p.newExpr(
+                                        E.Dot{
+                                            .target = p.newExpr(E.ImportMeta{}, e_.target.loc),
+                                            .name = "resolveSync",
+                                            .name_loc = e_.target.data.e_dot.name_loc,
+                                        },
+                                        e_.target.loc,
+                                    ),
+                                    .args = e_.args,
+                                    .close_paren_loc = e_.close_paren_loc,
+                                },
+                                expr.loc,
+                            );
+                        }
+
+                        if (e_.args.len == 1) {
+                            const first = e_.args.first_();
+                            switch (first.data) {
+                                .e_string => {
+                                    // require(FOO) => require(FOO)
+                                    return p.transposeImportMetaResolve(first, expr);
+                                },
+                                .e_if => {
+                                    // require(FOO  ? '123' : '456') => FOO ? require('123') : require('456')
+                                    // This makes static analysis later easier
+                                    return p.import_meta_resolve_transposer.maybeTransposeIf(first, expr);
                                 },
                                 else => {},
                             }
@@ -21457,6 +21577,7 @@ fn NewParser_(
                 .to_expr_wrapper_namespace = undefined,
                 .to_expr_wrapper_hoisted = undefined,
                 .import_transposer = undefined,
+                .import_meta_resolve_transposer = undefined,
                 .require_transposer = undefined,
                 .require_resolve_transposer = undefined,
                 .source = source,
@@ -21486,6 +21607,7 @@ fn NewParser_(
             this.to_expr_wrapper_namespace = Binding2ExprWrapper.Namespace.init(this);
             this.to_expr_wrapper_hoisted = Binding2ExprWrapper.Hoisted.init(this);
             this.import_transposer = @TypeOf(this.import_transposer).init(this);
+            this.import_meta_resolve_transposer = @TypeOf(this.import_meta_resolve_transposer).init(this);
             this.require_transposer = @TypeOf(this.require_transposer).init(this);
             this.require_resolve_transposer = @TypeOf(this.require_resolve_transposer).init(this);
 

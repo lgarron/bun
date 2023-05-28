@@ -2196,6 +2196,9 @@ pub const Api = struct {
         /// dynamic
         dynamic,
 
+        /// import_meta_resolve
+        import_meta_resolve,
+
         /// require_resolve
         require_resolve,
 

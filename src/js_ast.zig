@@ -3731,6 +3731,14 @@ pub const Expr = struct {
                     },
                 };
             },
+            E.ImportMetaResolveString => {
+                return Expr{
+                    .loc = loc,
+                    .data = Data{
+                        .e_import_meta_resolve_string = st,
+                    },
+                };
+            },
             E.Import => {
                 return Expr{
                     .loc = loc,
@@ -4068,6 +4076,14 @@ pub const Expr = struct {
                     },
                 };
             },
+            E.ImportMetaResolveString => {
+                return Expr{
+                    .loc = loc,
+                    .data = Data{
+                        .e_import_meta_resolve_string = st,
+                    },
+                };
+            },
             E.Import => {
                 return Expr{
                     .loc = loc,
@@ -4136,6 +4152,7 @@ pub const Expr = struct {
         e_yield,
         e_if,
         e_require_resolve_string,
+        e_import_meta_resolve_string,
         e_import,
         e_this,
         e_class,
@@ -4201,6 +4218,7 @@ pub const Expr = struct {
                 .e_yield => writer.writeAll("yield"),
                 .e_if => writer.writeAll("if"),
                 .e_require_resolve_string => writer.writeAll("require_or_require_resolve"),
+                .e_import_meta_resolve_string => writer.writeAll("import_or_import_meta_resolve"),
                 .e_import => writer.writeAll("import"),
                 .e_this => writer.writeAll("this"),
                 .e_class => writer.writeAll("class"),
@@ -4553,6 +4571,16 @@ pub const Expr = struct {
                 },
             }
         }
+        pub fn isImportMetaResolveString(self: Tag) bool {
+            switch (self) {
+                .e_import_meta_resolve_string => {
+                    return true;
+                },
+                else => {
+                    return false;
+                },
+            }
+        }
         pub fn isImport(self: Tag) bool {
             switch (self) {
                 .e_import => {
@@ -4781,6 +4809,7 @@ pub const Expr = struct {
         e_yield: *E.Yield,
         e_if: *E.If,
         e_import: *E.Import,
+        e_import_meta_resolve_string: E.ImportMetaResolveString,
 
         e_identifier: E.Identifier,
         e_import_identifier: E.ImportIdentifier,
@@ -7374,6 +7403,9 @@ pub const Macro = struct {
                 .e_require_resolve_string => |value| {
                     return JSNode{ .loc = this.loc, .data = .{ .e_require_resolve_string = value } };
                 },
+                .e_import_meta_resolve_string => |value| {
+                    return JSNode{ .loc = this.loc, .data = .{ .e_import_meta_resolve_string = value } };
+                },
                 .e_import => |value| {
                     return JSNode{ .loc = this.loc, .data = .{ .e_import = value } };
                 },
@@ -7493,6 +7525,9 @@ pub const Macro = struct {
                 .e_require_resolve_string => |value| {
                     return Expr{ .loc = this.loc, .data = .{ .e_require_resolve_string = value } };
                 },
+                .e_import_meta_resolve_string => |value| {
+                    return Expr{ .loc = this.loc, .data = .{ .e_import_meta_resolve_string = value } };
+                },
                 .e_import => |value| {
                     return Expr{ .loc = this.loc, .data = .{ .e_import = value } };
                 },
@@ -7595,6 +7630,7 @@ pub const Macro = struct {
             e_if: *E.If,
 
             e_import: *E.Import,
+            e_import_meta_resolve_string: E.ImportMetaResolveString,
 
             e_class: *E.Class,
 
@@ -7651,6 +7687,7 @@ pub const Macro = struct {
             e_yield,
             e_if,
             e_require_resolve_string,
+            e_import_meta_resolve,
             e_import,
             e_this,
             e_class,
@@ -7761,6 +7798,7 @@ pub const Macro = struct {
                 list.set(Tag.e_yield, Expr.Tag.e_yield);
                 list.set(Tag.e_if, Expr.Tag.e_if);
                 list.set(Tag.e_require_resolve_string, Expr.Tag.e_require_resolve_string);
+                list.set(Tag.e_import_meta_resolve_string, Expr.Tag.e_import_meta_resolve_string);
                 list.set(Tag.e_import, Expr.Tag.e_import);
                 list.set(Tag.e_this, Expr.Tag.e_this);
                 list.set(Tag.e_class, Expr.Tag.e_class);
@@ -7801,6 +7839,7 @@ pub const Macro = struct {
                 list.set(Expr.Tag.e_yield, Tag.e_yield);
                 list.set(Expr.Tag.e_if, Tag.e_if);
                 list.set(Expr.Tag.e_require_resolve_string, Tag.e_require_resolve_string);
+                list.set(Expr.Tag.e_import_meta_resolve_string, Tag.e_import_meta_resolve_string);
                 list.set(Expr.Tag.e_import, Tag.e_import);
                 list.set(Expr.Tag.e_this, Tag.e_this);
                 list.set(Expr.Tag.e_class, Tag.e_class);

@@ -225,10 +225,11 @@ export const enum ImportKind {
   stmt = 2,
   require = 3,
   dynamic = 4,
-  require_resolve = 5,
-  at = 6,
-  url = 7,
-  internal = 8,
+  import_meta_resolve = 5,
+  require_resolve = 6, // TODO(import.meta.resolve): Does this (and related definitions) need new entries to be added at the end?
+  at = 7,
+  url = 8,
+  internal = 9,
 }
 export const ImportKindKeys: {
   1: "entry_point";
@@ -239,13 +240,15 @@ export const ImportKindKeys: {
   require: "require";
   4: "dynamic";
   dynamic: "dynamic";
-  5: "require_resolve";
+  5: "import_meta_resolve";
+  import_meta_resolve: "import_meta_resolve";
+  6: "require_resolve";
   require_resolve: "require_resolve";
-  6: "at";
+  7: "at";
   at: "at";
-  7: "url";
+  8: "url";
   url: "url";
-  8: "internal";
+  9: "internal";
   internal: "internal";
 };
 export const enum TransformResponseStatus {

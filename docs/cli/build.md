@@ -536,6 +536,7 @@ export type ImportKind =
   | "import-statement"
   | "require-call"
   | "dynamic-import"
+  | "import-meta-resolve"
   | "require-resolve"
   | "import-rule"
   | "url-token";
@@ -1293,6 +1294,7 @@ declare class ResolveMessage {
     | "require"
     | "import"
     | "dynamic"
+    | "import_meta_resolve"
     | "require_resolve"
     | "at"
     | "at_conditional"
