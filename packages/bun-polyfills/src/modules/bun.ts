@@ -297,18 +297,24 @@ export const spawn = ((...args) => {
 
     }
     Object.defineProperty(subp, 'readable', { get(this: Subprocess) { return this.stdout; } });
+    const exitedPromise = new Promise<number>((resolve, reject) => {
+        subpAsNode.once('exit', (code: number) => {
+            stdstreams[0]?.destroy();
+            stdstreams[1]?.destroy();
+            stdstreams[2]?.destroy();
+            subp.kill();
+            subp.unref();
+            subpAsNode.disconnect?.();
+            subpAsNode.removeAllListeners();
+            resolve(code);
+        });
+    });
     Object.defineProperty(subp, 'exited', {
-        value: new Promise((resolve, reject) => {
-            subpAsNode.once('exit', (code) => {
-                stdstreams[0]?.destroy();
-                stdstreams[1]?.destroy();
-                stdstreams[2]?.destroy();
-                subp.kill();
-                subp.unref();
-                subpAsNode.disconnect?.();
-                subpAsNode.removeAllListeners();
-                resolve(code);
-            });
+        value: exitedPromise
+    });
+    Object.defineProperty(subp, 'success', {
+        value: new Promise<void>(async (resolve, reject) => {
+            return (await exitedPromise) === 0 ? resolve() : reject();
         })
     });
     if (stdinSrc) subpAsNode.once('spawn', () => {

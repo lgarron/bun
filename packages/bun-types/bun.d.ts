@@ -4394,6 +4394,13 @@ declare module "bun" {
     readonly exited: Promise<number>;
 
     /**
+     * A promise that resolves if the process returns with an exit code of 0
+     *
+     * The promise will resolve when the process exits
+     */
+    readonly success: Promise<undefined>;
+
+    /**
      * Synchronously get the exit code of the process
      *
      * If the process hasn't exited yet, this will return `null`

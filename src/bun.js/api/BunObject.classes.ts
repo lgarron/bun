@@ -114,6 +114,9 @@ export default [
       exited: {
         getter: "getExited",
       },
+      success: {
+        getter: "getSuccess",
+      },
       stdio: {
         getter: "getStdio",
       },

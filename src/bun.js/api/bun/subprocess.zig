@@ -184,6 +184,7 @@ pub const Subprocess = struct {
     pid_rusage: ?Rusage = null,
 
     exit_promise: JSC.Strong = .{},
+    success_promise: JSC.Strong = .{},
     on_exit_callback: JSC.Strong = .{},
 
     globalThis: *JSC.JSGlobalObject,
@@ -1452,6 +1453,27 @@ pub const Subprocess = struct {
                 }
             }
 
+            if (this.success_promise.trySwap()) |promise| {
+                loop.enter();
+                defer loop.exit();
+
+                if (!did_update_has_pending_activity) {
+                    this.updateHasPendingActivity();
+                    did_update_has_pending_activity = true;
+                }
+
+                switch (status) {
+                    .exited => |exited| (if (exited.code == 0) promise.asAnyPromise().?.resolve(globalThis, JSC.JSValue.jsUndefined()) else promise.asAnyPromise().?.reject(globalThis, JSC.JSValue.jsUndefined())),
+                    .err => promise.asAnyPromise().?.reject(globalThis, undefined),
+                    .signaled => promise.asAnyPromise().?.reject(globalThis, undefined),
+                    else => {
+                        // crash in debug mode
+                        if (comptime Environment.allow_assert)
+                            unreachable;
+                    },
+                }
+            }
+
             if (this.on_exit_callback.trySwap()) |callback| {
                 const waitpid_value: JSValue =
                     if (status == .err)
@@ -1534,6 +1556,7 @@ pub const Subprocess = struct {
         }
 
         this.exit_promise.deinit();
+        this.success_promise.deinit();
         this.on_exit_callback.deinit();
     }
 
@@ -1577,6 +1600,30 @@ pub const Subprocess = struct {
                 }
 
                 return this.exit_promise.get().?;
+            },
+        }
+    }
+
+    pub fn getSuccess(
+        this: *Subprocess,
+        globalThis: *JSGlobalObject,
+    ) callconv(.C) JSValue {
+        switch (this.process.status) {
+            .exited => |exit| {
+                return if (exit.code == 0) JSC.JSPromise.resolvedPromiseValue(globalThis, JSC.JSValue.jsUndefined()) else JSC.JSPromise.resolvedPromiseValue(globalThis, JSC.JSValue.jsUndefined());
+            },
+            .signaled => {
+                return JSC.JSPromise.rejectedPromiseValue(globalThis, JSC.JSValue.jsUndefined());
+            },
+            .err => {
+                return JSC.JSPromise.rejectedPromiseValue(globalThis, JSC.JSValue.jsUndefined());
+            },
+            else => {
+                if (!this.success_promise.has()) {
+                    this.success_promise.set(globalThis, JSC.JSPromise.create(globalThis).asValue(globalThis));
+                }
+
+                return this.success_promise.get().?;
             },
         }
     }
